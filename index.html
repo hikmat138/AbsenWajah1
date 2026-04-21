@@ -85,7 +85,7 @@
     <div id="home-section" class="menu-container">
         <h1>SISTEM ABSENSI SDNRT</h1>
         <button class="btn-scan" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
-        <button class="btn-admin" onclick="window.location.href='admin.html'">🔐 LOGIN ADMIN</button>🔐
+        <button class="btn-admin" onclick="window.location.href='admin.html'">🔐 LOGIN ADMIN</button>
     </div>
 
     <div id="scan-section">
@@ -153,7 +153,7 @@
                 );
 
                 const filteredDescriptors = labeledFaceDescriptors.filter(d => d !== null);
-                faceMatcher = new faceapi.FaceMatcher(filteredDescriptors, 0.6);
+                faceMatcher = new faceapi.FaceMatcher(filteredDescriptors, 0.4);
                 loader.className = "ready";
                 loader.innerText = "SISTEM SIAP! Silakan menghadap kamera.";
                 startRecognition();
