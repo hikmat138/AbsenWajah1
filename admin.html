@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Input Izin/Sakit</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #2c3e50; text-align: center; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        select, button { width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+        button { background: #2980b9; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-back { background: #95a5a6; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Input Izin / Sakit</h2>
+        
+        <label>Pilih Murid:</label>
+        <select id="studentSelect">
+            <option value="">Memuat data...</option>
+        </select>
+
+        <label>Keterangan:</label>
+        <select id="statusSelect">
+            <option value="S">Sakit (S)</option>
+            <option value="I">Izin (I)</option>
+        </select>
+
+        <button id="btnSubmit" onclick="submitData()">SIMPAN DATA</button>
+        <button class="btn-back" onclick="window.location.href='index.html'">KEMBALI</button>
+    </div>
+
+    <script>
+        const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec";
+        const select = document.getElementById('studentSelect');
+        const btn = document.getElementById('btnSubmit');
+
+        // Ambil data murid yang BELUM absen
+        async function loadStudents() {
+            try {
+                const resp = await fetch(URL_GAS);
+                const students = await resp.json();
+                
+                select.innerHTML = '<option value="">-- Pilih Nama Murid --</option>';
+                
+                // Filter hanya murid yang statusHariIni-nya "Belum"
+                const belumAbsen = students.filter(s => s.statusHariIni === "Belum");
+
+                if (belumAbsen.length === 0) {
+                    select.innerHTML = '<option value="">Semua murid sudah terabsen</option>';
+                    btn.disabled = true;
+                } else {
+                    belumAbsen.forEach(s => {
+                        let opt = document.createElement('option');
+                        opt.value = s.nisn;
+                        opt.text = s.nama;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Gagal memuat data</option>';
+            }
+        }
+
+        async function submitData() {
+            const nisn = select.value;
+            const status = document.getElementById('statusSelect').value;
+            
+            if (!nisn) return alert("Pilih murid terlebih dahulu!");
+
+            btn.disabled = true;
+            btn.innerText = "Mengirim...";
+
+            try {
+                await fetch(URL_GAS, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ nisn: nisn, status: status })
+                });
+
+                alert("Berhasil mencatat keterangan!");
+                location.reload(); // Refresh untuk update daftar dropdown
+            } catch (e) {
+                alert("Gagal mengirim data");
+                btn.disabled = false;
+                btn.innerText = "SIMPAN DATA";
+            }
+        }
+
+        loadStudents();
+    </script>
+</body>
+</html>
