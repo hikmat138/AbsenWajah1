@@ -31,46 +31,124 @@
     </div>
 
     <script>
-        const video = document.getElementById('video');
-        const loader = document.getElementById('loader');
-        const info = document.getElementById('info');
-        const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec";
+    const video = document.getElementById('video');
+    const loader = document.getElementById('loader');
+    const info = document.getElementById('info');
+    const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec";
 
-        // Fungsi pengecekan apakah faceapi sudah siap
-        async function checkLibrary() {
-            if (typeof faceapi !== 'undefined') {
-                console.log("Face-API siap!");
-                init();
-            } else {
-                console.log("Menunggu Face-API...");
-                setTimeout(checkLibrary, 500); // Cek lagi tiap 0.5 detik
-            }
+    let labeledFaceDescriptors = [];
+    let faceMatcher;
+    let isProcessing = false;
+
+    // 1. Cek Library
+    async function checkLibrary() {
+        if (typeof faceapi !== 'undefined') {
+            init();
+        } else {
+            setTimeout(checkLibrary, 500);
         }
+    }
 
-        async function init() {
-            try {
-                loader.innerText = "Memuat Model AI (SSD Mobilenet)...";
-                // Menggunakan model dari CDN yang lebih stabil
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-                
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    // 2. Inisialisasi Model & Kamera
+    async function init() {
+        try {
+            loader.innerText = "Memuat Model AI...";
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-                video.srcObject = stream;
-                
-                loadStudentData();
-            } catch (err) {
-                loader.innerText = "Gagal memuat: " + err;
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" } 
+            });
+            video.srcObject = stream;
+            
+            // Panggil fungsi muat data murid
+            await loadStudentData();
+        } catch (err) {
+            loader.innerText = "Gagal memuat: " + err;
         }
+    }
 
-        // ... Sisa fungsi loadStudentData, startRecognition, dan prosesAbsensi sama seperti sebelumnya ...
-        // (Pastikan fungsi-fungsi tersebut tetap ada di dalam tag <script> ini)
+    // 3. Ambil Data Murid dari Spreadsheet (doGet)
+    async function loadStudentData() {
+        try {
+            loader.innerText = "Sinkronisasi Wajah Murid...";
+            const response = await fetch(URL_GAS);
+            const students = await response.json();
 
-        // Jalankan pengecekan pertama kali
-        checkLibrary();
-    </script>
+            labeledFaceDescriptors = await Promise.all(
+                students.map(async (student) => {
+                    try {
+                        const img = await faceapi.fetchImage(student.foto);
+                        const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                        if (!detections) return null;
+                        return new faceapi.LabeledFaceDescriptors(student.nisn.toString(), [detections.descriptor]);
+                    } catch (e) {
+                        return null;
+                    }
+                })
+            );
+
+            labeledFaceDescriptors = labeledFaceDescriptors.filter(d => d !== null);
+            
+            if (labeledFaceDescriptors.length === 0) {
+                loader.innerText = "Error: Tidak ada data wajah valid di Drive.";
+                return;
+            }
+
+            faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+            loader.className = "ready";
+            loader.innerText = "SISTEM SIAP!";
+            startRecognition();
+        } catch (err) {
+            loader.innerText = "Gagal ambil data murid: " + err;
+        }
+    }
+
+    // 4. Deteksi Real-time
+    function startRecognition() {
+        const canvas = faceapi.createCanvasFromMedia(video);
+        document.getElementById('container').append(canvas);
+        const displaySize = { width: video.width, height: video.height };
+        faceapi.matchDimensions(canvas, displaySize);
+
+        setInterval(async () => {
+            const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+            resizedDetections.forEach(async (detection) => {
+                const result = faceMatcher.findBestMatch(detection.descriptor);
+                const label = result.toString();
+                
+                if (!result.label.includes("unknown") && !isProcessing) {
+                    prosesAbsensi(result.label);
+                }
+                new faceapi.draw.DrawBox(detection.detection.box, { label }).draw(canvas);
+            });
+        }, 1000);
+    }
+
+    // 5. Kirim ke Spreadsheet (doPost)
+    async function prosesAbsensi(nisn) {
+        isProcessing = true;
+        info.innerHTML = `Mengenali NISN: ${nisn}...`;
+        try {
+            await fetch(URL_GAS, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ nisn: nisn })
+            });
+            info.innerHTML = "BERHASIL DICATAT!";
+            setTimeout(() => { isProcessing = false; info.innerHTML = ""; }, 5000);
+        } catch (err) {
+            isProcessing = false;
+        }
+    }
+
+    checkLibrary();
+</script>
 </body>
 </html>
