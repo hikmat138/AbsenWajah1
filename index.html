@@ -6,117 +6,47 @@
     <title>Absensi Kelas 3A Scan Wajah</title>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        #scan-section { display: none; width: 100%; max-width: 640px; margin: 20px auto; }
-        #container { position: relative; width: 100%; border: 5px solid #333; border-radius: 10px; overflow: hidden; background: #000; line-height: 0; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Tampilan Scan Section Agar Tetap Besar */
+        #scan-section { display: none; width: 100%; max-width: 640px; padding: 10px; box-sizing: border-box; }
+        #container { position: relative; width: 100%; border: 5px solid #333; border-radius: 15px; overflow: hidden; background: #000; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
         video { width: 100%; height: auto; display: block; filter: brightness(1.1) contrast(1.1); transform: none; }
         canvas { position: absolute; top: 0; left: 0; transform: none; }
-        .btn-scan { background: #27ae60; color: white; padding: 15px 30px; border-radius: 50px; font-weight: bold; border: none; cursor: pointer; font-size: 18px; }
-        #status-box { margin: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; }
-        /* Update CSS untuk Menu Utama */
-.menu-container {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    min-height: 100vh;
-}
+        
+        #status-box { margin-top: 20px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
 
-.main-card {
-    background: white;
-    padding: 40px 30px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-}
-
-.main-card h1 {
-    font-size: 24px;
-    color: #2c3e50;
-    margin-bottom: 30px;
-    border-bottom: 2px solid #27ae60;
-    padding-bottom: 10px;
-}
-
-.btn-group {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.btn-main {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 15px;
-    border-radius: 12px;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-    text-decoration: none;
-}
-
-.btn-scan-wajah {
-    background: #27ae60;
-    color: white;
-    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-}
-
-.btn-scan-wajah:hover {
-    background: #219150;
-    transform: translateY(-2px);
-}
-
-.btn-admin-login {
-    background: #2c3e50;
-    color: white;
-    box-shadow: 0 4px 15px rgba(44, 62, 80, 0.2);
-}
-
-.btn-admin-login:hover {
-    background: #1a252f;
-    transform: translateY(-2px);
-}
-
-.school-footer {
-    margin-top: 25px;
-    font-size: 12px;
-    color: #7f8c8d;
-    font-style: italic;
-}
+        /* Menu Utama Modern */
+        .menu-container { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .main-card { background: white; padding: 40px 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
+        .main-card h1 { font-size: 24px; color: #2c3e50; margin-bottom: 30px; border-bottom: 3px solid #27ae60; padding-bottom: 10px; }
+        .btn-group { display: flex; flex-direction: column; gap: 15px; }
+        .btn-main { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; border: none; }
+        .btn-scan-wajah { background: #27ae60; color: white; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); }
+        .btn-admin-login { background: #2c3e50; color: white; }
+        .school-footer { margin-top: 25px; font-size: 13px; color: #7f8c8d; font-style: italic; }
     </style>
 </head>
 <body>
+
     <div id="home-section" class="menu-container">
-    <div class="main-card">
-        <h1>SISTEM ABSENSI<br><span style="color:#27ae60;">KELAS 3A</span></h1>
-        
-        <div class="btn-group">
-            <button class="btn-main btn-scan-wajah" onclick="showScan()">
-                <span>📸</span> MULAI SCAN WAJAH
-            </button>
-
-            <button class="btn-main btn-admin-login" onclick="window.location.href='admin.html'">
-                <span>🔐</span> LOGIN ADMINISTRATOR
-            </button>
-        </div>
-
-        <div class="school-footer">
-            SD Negeri Ranca Tales<br>
-            "Mindful, Joyful, and Meaningful"
+        <div class="main-card">
+            <h1>SISTEM ABSENSI<br><span style="color:#27ae60;">KELAS 3A</span></h1>
+            <div class="btn-group">
+                <button class="btn-main btn-scan-wajah" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
+                <button class="btn-main btn-admin-login" onclick="window.location.href='admin.html'">🔐 LOGIN ADMINISTRATOR</button>
+            </div>
+            <div class="school-footer">SD Negeri Ranca Tales<br>"Mindful, Joyful, and Meaningful"</div>
         </div>
     </div>
-</div>
 
     <div id="scan-section">
-        <button onclick="location.reload()" style="background:#e74c3c; color:white; border:none; padding:10px; border-radius:5px; margin-bottom:10px;">⬅ KEMBALI</button>
+        <button onclick="location.reload()" style="background:#e74c3c; color:white; border:none; padding:12px 25px; border-radius:10px; margin-bottom:15px; font-weight:bold; cursor:pointer;">⬅ KEMBALI</button>
         <div id="container">
             <video id="video" autoplay muted playsinline></video>
         </div>
         <div id="status-box">
-            <div id="loader">Menyiapkan AI...</div>
+            <div id="loader" style="color: #2980b9; font-weight: bold;">Menyiapkan AI...</div>
             <div id="info" style="font-weight:bold; font-size:1.2em; margin-top:10px;"></div>
         </div>
     </div>
@@ -129,16 +59,18 @@
 
         let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false;
 
+        function bicara(teks) {
+            window.speechSynthesis.cancel(); 
+            const pesan = new SpeechSynthesisUtterance(teks);
+            pesan.lang = "id-ID";
+            pesan.rate = 1.0;
+            window.speechSynthesis.speak(pesan);
+        }
+
         function showScan() {
             document.getElementById('home-section').style.display = 'none';
             document.getElementById('scan-section').style.display = 'block';
             init();
-        }
-
-        function bicara(teks) {
-            const pesan = new SpeechSynthesisUtterance(teks);
-            pesan.lang = "id-ID";
-            window.speechSynthesis.speak(pesan);
         }
 
         async function init() {
@@ -149,28 +81,35 @@
 
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             video.srcObject = stream;
-            loadStudentData();
+            
+            video.onloadedmetadata = () => {
+                loadStudentData();
+            };
         }
 
         async function loadStudentData() {
             loader.innerText = "Sinkronisasi Database...";
-            const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
-            const students = await response.json();
+            try {
+                const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
+                const students = await response.json();
 
-            const descriptors = await Promise.all(students.map(async s => {
-                studentNames[s.nisn] = s.nama;
-                studentStatus[s.nisn] = s.statusHariIni;
-                if (!s.foto) return null;
-                try {
-                    const img = await faceapi.fetchImage(s.foto);
-                    const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                    return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
-                } catch (e) { return null; }
-            }));
+                const descriptors = await Promise.all(students.map(async s => {
+                    studentNames[s.nisn] = s.nama;
+                    studentStatus[s.nisn] = s.statusHariIni;
+                    if (!s.foto) return null;
+                    try {
+                        const img = await faceapi.fetchImage(s.foto);
+                        const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                        return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
+                    } catch (e) { return null; }
+                }));
 
-            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.40);
-            loader.innerText = "SISTEM SIAP!";
-            startRecognition();
+                faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.45);
+                loader.innerText = "SISTEM SIAP! SILAKAN ABSEN";
+                startRecognition();
+            } catch (err) {
+                loader.innerText = "Gagal memuat data. Periksa internet.";
+            }
         }
 
         function startRecognition() {
@@ -182,35 +121,49 @@
             setInterval(async () => {
                 const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
                 canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                
                 if (det) {
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
+
                     if (nisn !== 'unknown' && match.distance < 0.45) {
-                        const nama = studentNames[nisn];
                         const status = studentStatus[nisn];
                         if (status === "Sudah Absen") {
-                            new faceapi.draw.DrawBox(res.detection.box, { label: nama + " (SUDAH)", boxColor: 'red' }).draw(canvas);
-                            if (!isProcessing) { isProcessing = true; bicara(`${nama}, Anda sudah absen hari ini.`); setTimeout(() => { isProcessing = false; }, 3000); }
+                            new faceapi.draw.DrawBox(res.detection.box, { label: "SUDAH ABSEN", boxColor: 'red' }).draw(canvas);
+                            if (!isProcessing) {
+                                isProcessing = true;
+                                bicara("Sudah absen hari ini, tolong gantian.");
+                                setTimeout(() => { isProcessing = false; }, 3500);
+                            }
                         } else {
-                            new faceapi.draw.DrawBox(res.detection.box, { label: nama, boxColor: '#2ecc71' }).draw(canvas);
-                            if (!isProcessing) prosesAbsensi(nisn, nama);
+                            new faceapi.draw.DrawBox(res.detection.box, { label: "BERHASIL", boxColor: '#2ecc71' }).draw(canvas);
+                            if (!isProcessing) prosesAbsensi(nisn);
                         }
                     } else {
-                        new faceapi.draw.DrawBox(res.detection.box, { label: "Tidak Dikenal", boxColor: 'orange' }).draw(canvas);
-                        if (!isProcessing) { isProcessing = true; bicara("Maaf, wajah tidak dikenali."); setTimeout(() => { isProcessing = false; }, 4000); }
+                        new faceapi.draw.DrawBox(res.detection.box, { label: "TIDAK DIKENAL", boxColor: 'orange' }).draw(canvas);
+                        if (!isProcessing) {
+                            isProcessing = true;
+                            bicara("Wajah tidak dikenali, anda siapa ya?");
+                            setTimeout(() => { isProcessing = false; }, 4000);
+                        }
                     }
                 }
-            }, 300);
+            }, 400);
         }
 
-        function prosesAbsensi(nisn, nama) {
+        function prosesAbsensi(nisn) {
             isProcessing = true;
-            bicara(`${nama} berhasil absen, selamat datang.`);
-            info.innerHTML = `<span style="color:green">✅ Berhasil: ${nama}</span>`;
+            bicara("Absen berhasil, selamat datang.");
+            info.innerHTML = `<span style="color:green">✅ ABSEN BERHASIL!</span>`;
             studentStatus[nisn] = "Sudah Absen";
+            
             fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: nisn }) });
-            setTimeout(() => { isProcessing = false; info.innerText = ""; }, 3000);
+            
+            setTimeout(() => { 
+                isProcessing = false; 
+                info.innerText = ""; 
+            }, 3000);
         }
     </script>
 </body>
