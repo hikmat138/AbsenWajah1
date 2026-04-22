@@ -125,7 +125,8 @@
 
             setInterval(async () => {
                 const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (det) {
                     const res = faceapi.resizeResults(det, size);
@@ -135,22 +136,52 @@
                     if (nisn !== 'unknown' && match.distance < 0.45) {
                         const nama = studentNames[nisn]; 
                         const status = studentStatus[nisn];
+                        const box = res.detection.box;
+
+                        // Tentukan warna (Hijau untuk baru absen, Merah untuk sudah)
+                        const warna = status === "Sudah Absen" ? 'red' : '#2ecc71';
+                        const label = status === "Sudah Absen" ? nama + " (SUDAH)" : nama;
+
+                        // 1. Gambar Kotak Wajah
+                        ctx.strokeStyle = warna;
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+                        // 2. TRIK AGAR TULISAN TIDAK TERBALIK
+                        ctx.save(); // Simpan settingan awal
+                        ctx.scale(-1, 1); // Balikkan koordinat khusus untuk teks
+                        
+                        ctx.font = "bold 18px Segoe UI";
+                        ctx.fillStyle = warna;
+                        
+                        // Karena koordinat dibalik, posisi X tulisan harus dihitung ulang
+                        // Kita letakkan teks di atas kotak wajah
+                        ctx.fillText(label, -box.x - box.width, box.y - 10);
+                        
+                        ctx.restore(); // Kembalikan koordinat ke settingan awal mirror
 
                         if (status === "Sudah Absen") {
-                            // TAMPILKAN NAMA DI FRAME TAPI SUARA UMUM
-                            new faceapi.draw.DrawBox(res.detection.box, { label: nama + " (SUDAH)", boxColor: 'red' }).draw(canvas);
                             if (!isProcessing) {
                                 isProcessing = true;
                                 bicara("Sudah absen hari ini, tolong gantian.");
                                 setTimeout(() => { isProcessing = false; }, 3500);
                             }
                         } else {
-                            // TAMPILKAN NAMA DI FRAME TAPI SUARA UMUM
-                            new faceapi.draw.DrawBox(res.detection.box, { label: nama, boxColor: '#2ecc71' }).draw(canvas);
                             if (!isProcessing) prosesAbsensi(nisn, nama);
                         }
                     } else {
-                        new faceapi.draw.DrawBox(res.detection.box, { label: "TIDAK DIKENAL", boxColor: 'orange' }).draw(canvas);
+                        // Kondisi Tidak Dikenal
+                        ctx.strokeStyle = "orange";
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(res.detection.box.x, res.detection.box.y, res.detection.box.width, res.detection.box.height);
+                        
+                        ctx.save();
+                        ctx.scale(-1, 1);
+                        ctx.fillStyle = "orange";
+                        ctx.font = "bold 18px Segoe UI";
+                        ctx.fillText("TIDAK DIKENAL", -res.detection.box.x - res.detection.box.width, res.detection.box.y - 10);
+                        ctx.restore();
+
                         if (!isProcessing) {
                             isProcessing = true;
                             bicara("Wajah tidak dikenali, anda siapa ya?");
