@@ -14,14 +14,102 @@
         canvas { position: absolute; top: 0; left: 0; transform: none; }
         .btn-scan { background: #27ae60; color: white; padding: 15px 30px; border-radius: 50px; font-weight: bold; border: none; cursor: pointer; font-size: 18px; }
         #status-box { margin: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; }
+        /* Update CSS untuk Menu Utama */
+.menu-container {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+.main-card {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.main-card h1 {
+    font-size: 24px;
+    color: #2c3e50;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #27ae60;
+    padding-bottom: 10px;
+}
+
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    text-decoration: none;
+}
+
+.btn-scan-wajah {
+    background: #27ae60;
+    color: white;
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.btn-scan-wajah:hover {
+    background: #219150;
+    transform: translateY(-2px);
+}
+
+.btn-admin-login {
+    background: #2c3e50;
+    color: white;
+    box-shadow: 0 4px 15px rgba(44, 62, 80, 0.2);
+}
+
+.btn-admin-login:hover {
+    background: #1a252f;
+    transform: translateY(-2px);
+}
+
+.school-footer {
+    margin-top: 25px;
+    font-size: 12px;
+    color: #7f8c8d;
+    font-style: italic;
+}
     </style>
 </head>
 <body>
     <div id="home-section" class="menu-container">
-        <h1>SISTEM ABSENSI KELAS 3A</h1>
-        <button class="btn-scan" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
-        <button onclick="window.location.href='admin.html'" style="margin-top:10px; background:none; border:none; color:#2980b9; cursor:pointer;">🔐 LOGIN ADMIN </button>
+    <div class="main-card">
+        <h1>SISTEM ABSENSI<br><span style="color:#27ae60;">KELAS 3A</span></h1>
+        
+        <div class="btn-group">
+            <button class="btn-main btn-scan-wajah" onclick="showScan()">
+                <span>📸</span> MULAI SCAN WAJAH
+            </button>
+
+            <button class="btn-main btn-admin-login" onclick="window.location.href='admin.html'">
+                <span>🔐</span> LOGIN ADMINISTRATOR
+            </button>
+        </div>
+
+        <div class="school-footer">
+            SD Negeri Ranca Tales<br>
+            "Mindful, Joyful, and Meaningful"
+        </div>
     </div>
+</div>
 
     <div id="scan-section">
         <button onclick="location.reload()" style="background:#e74c3c; color:white; border:none; padding:10px; border-radius:5px; margin-bottom:10px;">⬅ KEMBALI</button>
