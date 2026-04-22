@@ -3,99 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Absensi SDNRT</title>
+    <title>Absensi Kelas 3A Scan Wajah</title>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            text-align: center; 
-            background: #f0f2f5; 
-            margin: 0; 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        
-        .menu-container { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 20px; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            width: 100%;
-        }
-
-        h1 { color: #2c3e50; margin-bottom: 30px; }
-
-        button { 
-            padding: 15px 30px; 
-            font-size: 18px; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 50px; 
-            width: 280px; 
-            transition: 0.3s; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            font-weight: bold;
-        }
-
-        .btn-scan { background: #27ae60; color: white; }
-        .btn-scan:hover { background: #219150; transform: scale(1.05); }
-        .btn-admin { background: #2980b9; color: white; }
-        .btn-admin:hover { background: #2471a3; transform: scale(1.05); }
-
-        #scan-section { 
-            display: none; 
-            width: 100%; 
-            max-width: 640px; 
-            margin: 20px auto; 
-        }
-
-        #container { 
-            position: relative; 
-            width: 100%; 
-            margin: 0 auto; 
-            border: 5px solid #333; 
-            border-radius: 10px; 
-            overflow: hidden; 
-            background-color: #000;
-            line-height: 0;
-        }
-
-        video { width: 100%; height: auto; display: block; }
-        canvas { position: absolute; top: 0; left: 0; }
-
-        #status-box { 
-            margin: 20px auto; 
-            padding: 15px; 
-            border-radius: 8px; 
-            background: white; 
-            width: 90%; 
-            max-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        }
-
-        .ready { color: #27ae60; font-weight: bold; }
-        .loading { color: #e67e22; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .menu-container { display: flex; flex-direction: column; gap: 20px; align-items: center; justify-content: center; min-height: 100vh; width: 100%; }
+        #scan-section { display: none; width: 100%; max-width: 640px; margin: 20px auto; }
+        #container { position: relative; width: 100%; border: 5px solid #333; border-radius: 10px; overflow: hidden; background: #000; line-height: 0; }
+        video { width: 100%; height: auto; display: block; filter: brightness(1.1) contrast(1.1); transform: none; }
+        canvas { position: absolute; top: 0; left: 0; transform: none; }
+        .btn-scan { background: #27ae60; color: white; padding: 15px 30px; border-radius: 50px; font-weight: bold; border: none; cursor: pointer; font-size: 18px; }
+        #status-box { margin: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; }
     </style>
 </head>
 <body>
-
     <div id="home-section" class="menu-container">
-        <h1>SISTEM ABSENSI SDNRT</h1>
+        <h1>SISTEM ABSENSI KELAS 3A</h1>
         <button class="btn-scan" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
-        <button class="btn-admin" onclick="window.location.href='admin.html'">🔐 LOGIN ADMIN</button>
+        <button onclick="window.location.href='admin.html'" style="margin-top:10px; background:none; border:none; color:#2980b9; cursor:pointer;">🔐 LOGIN ADMIN </button>
     </div>
 
     <div id="scan-section">
-        <button onclick="location.reload()" style="width: auto; background: #e74c3c; color: white; margin-bottom: 15px; border-radius: 10px; padding: 10px 20px;">⬅ KEMBALI</button>
+        <button onclick="location.reload()" style="background:#e74c3c; color:white; border:none; padding:10px; border-radius:5px; margin-bottom:10px;">⬅ KEMBALI</button>
         <div id="container">
-            <video id="video" width="640" height="480" autoplay muted playsinline></video>
+            <video id="video" autoplay muted playsinline></video>
         </div>
         <div id="status-box">
-            <div id="loader" class="loading">Menyiapkan AI & Database...</div>
-            <div id="info" style="font-weight: bold; font-size: 1.2em; margin-top: 10px;"></div>
+            <div id="loader">Menyiapkan AI...</div>
+            <div id="info" style="font-weight:bold; font-size:1.2em; margin-top:10px;"></div>
         </div>
     </div>
 
@@ -103,12 +38,9 @@
         const video = document.getElementById('video');
         const loader = document.getElementById('loader');
         const info = document.getElementById('info');
-        const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec";
+        const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec"; 
 
-        let studentNames = {}; 
-        let studentStatus = {}; 
-        let faceMatcher;
-        let isProcessing = false;
+        let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false;
 
         function showScan() {
             document.getElementById('home-section').style.display = 'none';
@@ -116,113 +48,82 @@
             init();
         }
 
-        async function init() {
-            try {
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        function bicara(teks) {
+            const pesan = new SpeechSynthesisUtterance(teks);
+            pesan.lang = "id-ID";
+            window.speechSynthesis.speak(pesan);
+        }
 
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
-                });
-                video.srcObject = stream;
-                loadStudentData();
-            } catch (err) {
-                loader.innerText = "Kamera/AI Gagal: " + err;
-            }
+        async function init() {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            video.srcObject = stream;
+            loadStudentData();
         }
 
         async function loadStudentData() {
-            loader.innerText = "Sinkronisasi Database Murid...";
-            try {
-                const response = await fetch(URL_GAS);
-                const students = await response.json();
+            loader.innerText = "Sinkronisasi Database...";
+            const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
+            const students = await response.json();
 
-                const labeledFaceDescriptors = await Promise.all(
-                    students.map(async (student) => {
-                        studentNames[student.nisn] = student.nama;
-                        studentStatus[student.nisn] = student.statusHariIni; 
-                        try {
-                            const img = await faceapi.fetchImage(student.foto);
-                            const fullFaceDescription = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                            if (!fullFaceDescription) return null;
-                            return new faceapi.LabeledFaceDescriptors(student.nisn.toString(), [fullFaceDescription.descriptor]);
-                        } catch (e) { return null; }
-                    })
-                );
+            const descriptors = await Promise.all(students.map(async s => {
+                studentNames[s.nisn] = s.nama;
+                studentStatus[s.nisn] = s.statusHariIni;
+                if (!s.foto) return null;
+                try {
+                    const img = await faceapi.fetchImage(s.foto);
+                    const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                    return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
+                } catch (e) { return null; }
+            }));
 
-                const filteredDescriptors = labeledFaceDescriptors.filter(d => d !== null);
-                faceMatcher = new faceapi.FaceMatcher(filteredDescriptors, 0.4);
-                loader.className = "ready";
-                loader.innerText = "SISTEM SIAP! Silakan menghadap kamera.";
-                startRecognition();
-            } catch (err) {
-                loader.innerText = "Gagal memuat database.";
-            }
+            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.40);
+            loader.innerText = "SISTEM SIAP!";
+            startRecognition();
         }
 
         function startRecognition() {
             const canvas = faceapi.createCanvasFromMedia(video);
             document.getElementById('container').append(canvas);
-            const displaySize = { width: video.offsetWidth, height: video.offsetHeight };
-            faceapi.matchDimensions(canvas, displaySize);
+            const size = { width: video.offsetWidth, height: video.offsetHeight };
+            faceapi.matchDimensions(canvas, size);
 
             setInterval(async () => {
-                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
                 canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-
-                resizedDetections.forEach(async (detection) => {
-                    const result = faceMatcher.findBestMatch(detection.descriptor);
-                    const nisn = result.label;
-                    
-                    if (nisn !== 'unknown') {
+                if (det) {
+                    const res = faceapi.resizeResults(det, size);
+                    const match = faceMatcher.findBestMatch(det.descriptor);
+                    const nisn = match.label;
+                    if (nisn !== 'unknown' && match.distance < 0.45) {
                         const nama = studentNames[nisn];
                         const status = studentStatus[nisn];
-                        
-                        // Logika tampilan label dan warna kotak
-                        const labelTampil = status === "Sudah Absen" ? `${nama} (SUDAH ABSEN)` : nama;
-                        const warnaKotak = status === "Sudah Absen" ? '#e74c3c' : '#2ecc71';
-
-                        const drawBox = new faceapi.draw.DrawBox(detection.detection.box, { 
-                            label: labelTampil, 
-                            boxColor: warnaKotak 
-                        });
-                        drawBox.draw(canvas);
-                        
-                        if (!isProcessing && status !== "Sudah Absen") {
-                            prosesAbsensi(nisn, nama);
+                        if (status === "Sudah Absen") {
+                            new faceapi.draw.DrawBox(res.detection.box, { label: nama + " (SUDAH)", boxColor: 'red' }).draw(canvas);
+                            if (!isProcessing) { isProcessing = true; bicara(`${nama}, Anda sudah absen hari ini.`); setTimeout(() => { isProcessing = false; }, 3000); }
+                        } else {
+                            new faceapi.draw.DrawBox(res.detection.box, { label: nama, boxColor: '#2ecc71' }).draw(canvas);
+                            if (!isProcessing) prosesAbsensi(nisn, nama);
                         }
                     } else {
-                        new faceapi.draw.DrawBox(detection.detection.box, { label: "Tidak Dikenal", boxColor: 'gray' }).draw(canvas);
+                        new faceapi.draw.DrawBox(res.detection.box, { label: "Tidak Dikenal", boxColor: 'orange' }).draw(canvas);
+                        if (!isProcessing) { isProcessing = true; bicara("Maaf, wajah tidak dikenali."); setTimeout(() => { isProcessing = false; }, 4000); }
                     }
-                });
-            }, 1000);
+                }
+            }, 300);
         }
 
-        async function prosesAbsensi(nisn, nama) {
+        function prosesAbsensi(nisn, nama) {
             isProcessing = true;
-            info.innerText = "Mencatat kehadiran: " + nama + "...";
-            
-            try {
-                await fetch(URL_GAS, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ nisn: nisn })
-                });
-
-                info.innerHTML = `<span style="color:#27ae60">✅ ${nama} Berhasil!</span>`;
-                studentStatus[nisn] = "Sudah Absen"; // Update status lokal
-                
-                setTimeout(() => { 
-                    isProcessing = false; 
-                    info.innerText = ""; 
-                }, 5000);
-            } catch (err) {
-                isProcessing = false;
-                info.innerText = "Gagal mengirim data.";
-            }
+            bicara(`${nama} berhasil absen, selamat datang.`);
+            info.innerHTML = `<span style="color:green">✅ Berhasil: ${nama}</span>`;
+            studentStatus[nisn] = "Sudah Absen";
+            fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: nisn }) });
+            setTimeout(() => { isProcessing = false; info.innerText = ""; }, 3000);
         }
     </script>
 </body>
