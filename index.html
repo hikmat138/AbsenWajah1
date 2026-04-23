@@ -85,7 +85,6 @@
         }
 
         function showScan() {
-            // Pancingan suara agar browser mengizinkan audio
             bicara("Siap menyalin data");
             document.getElementById('home-section').style.display = 'none';
             document.getElementById('scan-section').style.display = 'block';
@@ -122,7 +121,6 @@
                 } catch (e) { return null; }
             }));
 
-            // AMBANG BATAS (Threshold) diperlonggar ke 0.55 agar tidak terlalu ketat
             faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.55);
             loader.innerText = "SIAP! DEKATI KAMERA";
             startRecognition();
@@ -141,11 +139,9 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // Ambil semua wajah yang terdeteksi cukup jelas
                 const validDetections = detections.filter(d => d.detection.score > 0.8);
 
                 if (validDetections.length > 0) {
-                    // Fokus ke wajah paling besar di depan
                     const det = validDetections.sort((a, b) => b.detection.box.width - a.detection.box.width)[0];
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
@@ -153,21 +149,18 @@
                     const dist = match.distance;
                     const box = res.detection.box;
 
-                    let warna = "#e74c3c"; // Default Merah
+                    let warna = "#e74c3c"; 
                     let teksMuncul = "Wajah Tidak Dikenal";
 
                     if (nisn !== 'unknown') {
-                        // Frame Hijau jika jarak < 0.55 (Cukup Longgar)
                         warna = dist < 0.55 ? "#2ecc71" : "#f1c40f";
                         teksMuncul = studentNames[nisn];
                     }
 
-                    // GAMBAR KOTAK
                     ctx.strokeStyle = warna;
                     ctx.lineWidth = 4;
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-                    // TULIS NAMA DI ATAS KOTAK
                     ctx.save();
                     ctx.scale(-1, 1);
                     ctx.fillStyle = warna;
@@ -175,7 +168,6 @@
                     ctx.fillText(teksMuncul, -box.x - box.width, box.y - 15);
                     ctx.restore();
 
-                    // PROSES JIKA DIKENAL (HIJAU)
                     if (warna === "#2ecc71") {
                         if (studentStatus[nisn] === "Sudah Absen") {
                             info.innerHTML = `<span style='color:red'>${teksMuncul} Sudah Absen</span>`;
@@ -192,19 +184,27 @@
         function askConfirmation(nisn, nama) {
             confirmBox.style.display = 'block';
             document.getElementById('ask-name').innerText = `Apakah benar ini namamu, ${nama}?`;
-            // GANTI SUARA SESUAI PERMINTAAN
-            bicara(`Apakah benar ini namamu, ${nama}?`);
+            
+            // Suara singkat tanpa menyebut nama
+            bicara("Apakah benar ini namamu?");
             
             document.getElementById('btn-ya').onclick = () => {
-                prosesAbsensi(nisn, nama);
-                tutupModal();
+                // Double check status sebelum proses kirim
+                if (studentStatus[nisn] === "Sudah Absen") {
+                    info.innerHTML = `<span style='color:red'>${nama} Sudah Absen</span>`;
+                    tutupModal();
+                } else {
+                    prosesAbsensi(nisn, nama);
+                    tutupModal();
+                }
             };
         }
 
         function showManual() {
             const sel = document.getElementById('studentSelect');
             sel.innerHTML = '<option value="">-- Pilih Nama --</option>';
-            rawStudents.filter(s => s.statusHariIni === "Belum").forEach(s => {
+            // Tampilkan semua murid agar bisa dipilih jika AI salah tebak
+            rawStudents.forEach(s => {
                 let o = document.createElement('option'); o.value = s.nisn; o.text = s.nama; sel.appendChild(o);
             });
             document.getElementById('manual-box').style.display = 'block';
@@ -212,9 +212,18 @@
 
         function submitManual() {
             const sel = document.getElementById('studentSelect');
-            if (!sel.value) return;
-            prosesAbsensi(sel.value, sel.options[sel.selectedIndex].text);
-            tutupModal();
+            const nisn = sel.value;
+            const nama = sel.options[sel.selectedIndex].text;
+            if (!nisn) return;
+
+            // CEK LAGI: Jika yang dipilih manual sudah absen
+            if (studentStatus[nisn] === "Sudah Absen") {
+                info.innerHTML = `<span style='color:red'>${nama} Sudah Absen</span>`;
+                tutupModal();
+            } else {
+                prosesAbsensi(nisn, nama);
+                tutupModal();
+            }
         }
 
         function tutupModal() {
@@ -224,7 +233,8 @@
         }
 
         function prosesAbsensi(nisn, nama) {
-            bicara("Absen berhasil, selamat belajar " + nama);
+            // Suara berhasil singkat
+            bicara("Absen berhasil, selamat belajar");
             info.innerHTML = `<span style="color:green">✅ BERHASIL: ${nama}</span>`;
             studentStatus[nisn] = "Sudah Absen";
             fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: nisn }) });
