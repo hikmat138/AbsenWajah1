@@ -54,17 +54,17 @@
             <video id="video" autoplay muted playsinline></video>
         </div>
         <div id="status-box">
-            <div id="loader" style="color: #2980b9; font-weight: bold;">Menunggu Kamera...</div>
+            <div id="loader" style="color: #2980b9; font-weight: bold;">Menyiapkan AI...</div>
             <div id="info" style="font-weight:bold; font-size:1.1em; margin-top:5px;"></div>
         </div>
     </div>
 
     <div id="confirm-box">
         <h3 id="ask-name">Apakah benar kamu ...?</h3>
-        <button class="btn-main btn-confirm" id="btn-ya">YA, BENAR</button>
+        <button class="btn-main btn-confirm" id="btn-ya">YA, SAYA MAU ABSEN</button>
         <button class="btn-main btn-wrong" onclick="showManual()">BUKAN SAYA</button>
         <div id="manual-box">
-            <p style="font-size: 13px; color: #7f8c8d;">Pilih nama murid di bawah ini:</p>
+            <p style="font-size: 13px; color: #7f8c8d;">Pilih namamu di bawah ini:</p>
             <select id="studentSelect"></select>
             <button class="btn-main btn-confirm" onclick="submitManual()">KONFIRMASI ABSEN</button>
         </div>
@@ -79,27 +79,23 @@
 
         let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false, rawStudents = [];
 
-        // Fungsi Bicara diperbaiki agar lebih kompatibel
         function bicara(teks) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const pesan = new SpeechSynthesisUtterance(teks);
                 pesan.lang = "id-ID";
-                pesan.rate = 1.0;
                 window.speechSynthesis.speak(pesan);
             }
         }
 
         function showScan() {
-            // Memberikan suara kosong saat klik tombol untuk 'membuka kunci' audio browser
-            bicara(""); 
             document.getElementById('home-section').style.display = 'none';
             document.getElementById('scan-section').style.display = 'block';
             init();
         }
 
         async function init() {
-            loader.innerText = "Memuat AI Wajah...";
+            loader.innerText = "Memuat Model AI...";
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
             await Promise.all([
                 faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -110,17 +106,14 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 video.srcObject = stream;
-                video.onloadedmetadata = () => { 
-                    loadStudentData(); 
-                };
+                video.onloadedmetadata = () => { loadStudentData(); };
             } catch (err) {
-                loader.innerText = "Kamera tidak ditemukan!";
-                bicara("Kamera tidak aktif.");
+                loader.innerText = "Kamera Gagal Dimuat!";
             }
         }
 
         async function loadStudentData() {
-            loader.innerText = "Sinkronisasi Database...";
+            loader.innerText = "Mengunduh Data Murid...";
             try {
                 const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
                 rawStudents = await response.json();
@@ -137,26 +130,20 @@
                 }));
 
                 const validDescriptors = descriptors.filter(d => d !== null);
-                if(validDescriptors.length > 0) {
-                    faceMatcher = new faceapi.FaceMatcher(validDescriptors, 0.40);
-                    loader.innerText = "SIAP! DEKATI KAMERA";
-                    startRecognition();
-                } else {
-                    loader.innerText = "Data murid tidak ada foto!";
-                }
+                faceMatcher = new faceapi.FaceMatcher(validDescriptors, 0.40);
+                loader.innerText = "SIAP! SILAKAN SCAN";
+                startRecognition();
             } catch (e) {
-                loader.innerText = "Internet Bermasalah!";
-                bicara("Periksa koneksi internet Bapak.");
+                loader.innerText = "Gagal Sinkronisasi!";
+                bicara("Internet bermasalah.");
             }
         }
 
         function startRecognition() {
-            // Membuat canvas sesuai ukuran video yang sedang aktif
             const canvas = faceapi.createCanvasFromMedia(video);
             document.getElementById('container').append(canvas);
-            
-            const displaySize = { width: video.offsetWidth, height: video.offsetHeight };
-            faceapi.matchDimensions(canvas, displaySize);
+            const size = { width: video.offsetWidth, height: video.offsetHeight };
+            faceapi.matchDimensions(canvas, size);
 
             setInterval(async () => {
                 if (isProcessing) return;
@@ -165,25 +152,15 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // 1. Peringatan Kerumunan
                 if (detections.length > 1) {
                     info.innerHTML = "<span style='color:red'>⚠️ SATU PER SATU!</span>";
-                    bicara("Satu orang saja di depan kamera.");
+                    bicara("Tolong satu orang saja.");
                     return;
                 }
 
                 if (detections.length === 1) {
                     const det = detections[0];
-                    if (det.detection.score < 0.80) return;
-
-                    const res = faceapi.resizeResults(det, displaySize);
-                    
-                    // 2. Gambar Frame Kotak (Wajib Muncul)
-                    const box = res.detection.box;
-                    ctx.strokeStyle = "#2ecc71";
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(box.x, box.y, box.width, box.height);
-
+                    const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
                     const dist = match.distance;
@@ -191,10 +168,27 @@
                     if (nisn !== 'unknown' && dist < 0.45) {
                         const nama = studentNames[nisn]; 
                         const status = studentStatus[nisn];
+                        const box = res.detection.box;
+
+                        // GAMBAR KOTAK & NAMA DI CANVAS
+                        ctx.strokeStyle = "#2ecc71";
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+                        
+                        // Menulis Nama (Dibalik karena video mirror)
+                        ctx.save();
+                        ctx.scale(-1, 1);
+                        ctx.fillStyle = "#2ecc71";
+                        ctx.font = "bold 20px Arial";
+                        ctx.fillText(nama, -box.x - box.width, box.y - 10);
+                        ctx.restore();
 
                         if (status === "Sudah Absen") {
-                            info.innerHTML = `<span style='color:red'>${nama} Sudah Absen</span>`;
+                            info.innerHTML = `<span style='color:red'>${nama} SUDAH ABSEN</span>`;
                         } else {
+                            // JEDA SCAN & MUNCULKAN KONFIRMASI
+                            isProcessing = true;
+                            video.pause(); // Kamera berhenti sejenak
                             askConfirmation(nisn, nama);
                         }
                     }
@@ -203,14 +197,13 @@
         }
 
         function askConfirmation(nisn, nama) {
-            isProcessing = true;
-            document.getElementById('ask-name').innerText = `Apakah kamu ${nama}?`;
+            document.getElementById('ask-name').innerText = `Apakah benar kamu ${nama}?`;
             confirmBox.style.display = 'block';
             bicara(`Apakah benar kamu ${nama}?`);
             
             document.getElementById('btn-ya').onclick = () => {
                 prosesAbsensi(nisn, nama);
-                closeModal();
+                tutupModal();
             };
         }
 
@@ -221,27 +214,29 @@
                 let o = document.createElement('option'); o.value = s.nisn; o.text = s.nama; sel.appendChild(o);
             });
             document.getElementById('manual-box').style.display = 'block';
-            bicara("Silakan pilih namamu.");
+            bicara("Pilih namamu secara manual.");
         }
 
         function submitManual() {
             const sel = document.getElementById('studentSelect');
-            if (!sel.value) return alert("Pilih namamu!");
+            if (!sel.value) return alert("Pilih nama dulu!");
             prosesAbsensi(sel.value, sel.options[sel.selectedIndex].text);
-            closeModal();
+            tutupModal();
         }
 
-        function closeModal() {
+        function tutupModal() {
             confirmBox.style.display = 'none';
             document.getElementById('manual-box').style.display = 'none';
-            setTimeout(() => { 
-                isProcessing = false; 
-                info.innerText = ""; 
+            // Tunggu 3 detik baru aktifkan kamera lagi agar tidak double scan
+            setTimeout(() => {
+                video.play();
+                isProcessing = false;
+                info.innerText = "";
             }, 3000);
         }
 
         function prosesAbsensi(nisn, nama) {
-            bicara("Absen berhasil, selamat belajar " + nama);
+            bicara("Absen berhasil. Selamat belajar, " + nama);
             info.innerHTML = `<span style="color:green">✅ ABSEN BERHASIL: ${nama}</span>`;
             studentStatus[nisn] = "Sudah Absen";
             fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: nisn }) });
