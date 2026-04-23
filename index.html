@@ -73,6 +73,7 @@
         const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec"; 
 
         let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false, rawStudents = [];
+        let unknownCount = 0; // Menghitung berapa kali orang tidak dikenal mencoba
 
         function bicara(teks) {
             if ('speechSynthesis' in window) {
@@ -99,7 +100,6 @@
                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
             ]);
-            
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             video.srcObject = stream;
             video.onloadedmetadata = () => { loadStudentData(); };
@@ -109,7 +109,6 @@
             loader.innerText = "Sinkronisasi Data...";
             const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
             rawStudents = await response.json();
-
             const descriptors = await Promise.all(rawStudents.map(async s => {
                 studentNames[s.nisn] = s.nama;
                 studentStatus[s.nisn] = s.statusHariIni;
@@ -120,7 +119,6 @@
                     return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
                 } catch (e) { return null; }
             }));
-
             faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.55);
             loader.innerText = "SIAP! DEKATI KAMERA";
             startRecognition();
@@ -141,8 +139,15 @@
                 
                 const validDetections = detections.filter(d => d.detection.score > 0.8);
 
-                if (validDetections.length > 0) {
-                    const det = validDetections.sort((a, b) => b.detection.box.width - a.detection.box.width)[0];
+                // LOGIKA RAME (LEBIH DARI 1 ORANG)
+                if (validDetections.length > 1) {
+                    info.innerHTML = "<span style='color:red'>JANGAN REBUTAN!</span>";
+                    bicara("tolong satu satu gantian jangan rebutan");
+                    return;
+                }
+
+                if (validDetections.length === 1) {
+                    const det = validDetections[0];
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
@@ -150,11 +155,12 @@
                     const box = res.detection.box;
 
                     let warna = "#e74c3c"; 
-                    let teksMuncul = "Wajah Tidak Dikenal";
+                    let teksMuncul = "Tidak Dikenal";
 
                     if (nisn !== 'unknown') {
                         warna = dist < 0.55 ? "#2ecc71" : "#f1c40f";
                         teksMuncul = studentNames[nisn];
+                        unknownCount = 0; // Reset hitungan jika murid dikenal
                     }
 
                     ctx.strokeStyle = warna;
@@ -168,9 +174,32 @@
                     ctx.fillText(teksMuncul, -box.x - box.width, box.y - 15);
                     ctx.restore();
 
+                    // JIKA TIDAK DIKENAL
+                    if (nisn === 'unknown') {
+                        isProcessing = true;
+                        unknownCount++;
+                        
+                        if (unknownCount === 1) {
+                            bicara("wajah tidak dikenal anda siapa ya?");
+                        } else if (unknownCount === 2) {
+                            bicara("mungkin wajah nya buram atau cahayanya gelap");
+                        } else {
+                            bicara("jika benar namamu ada di data coba silahkan pilih");
+                            showManual();
+                            return; 
+                        }
+                        
+                        // Beri jeda agar murid bisa menyesuaikan posisi
+                        setTimeout(() => { isProcessing = false; }, 3000);
+                    }
+
+                    // JIKA DIKENAL (HIJAU)
                     if (warna === "#2ecc71") {
                         if (studentStatus[nisn] === "Sudah Absen") {
-                            info.innerHTML = `<span style='color:red'>${teksMuncul} Sudah Absen</span>`;
+                            info.innerHTML = `<span style='color:red'>SUDAH ABSEN!</span>`;
+                            bicara("Anda sudah absen, jangan banyak banyak");
+                            isProcessing = true;
+                            setTimeout(() => { isProcessing = false; info.innerText=""; }, 3000);
                         } else {
                             isProcessing = true;
                             video.pause();
@@ -178,51 +207,55 @@
                         }
                     }
                 }
-            }, 600);
+            }, 1000); // Interval 1 detik agar AI tidak terlalu lelah
         }
 
         function askConfirmation(nisn, nama) {
             confirmBox.style.display = 'block';
             document.getElementById('ask-name').innerText = `Apakah benar ini namamu, ${nama}?`;
-            
-            // Suara singkat tanpa menyebut nama
             bicara("Apakah benar ini namamu?");
             
             document.getElementById('btn-ya').onclick = () => {
-                // Double check status sebelum proses kirim
-                if (studentStatus[nisn] === "Sudah Absen") {
-                    info.innerHTML = `<span style='color:red'>${nama} Sudah Absen</span>`;
-                    tutupModal();
-                } else {
-                    prosesAbsensi(nisn, nama);
-                    tutupModal();
-                }
+                prosesAbsensi(nisn, nama);
+                tutupModal();
             };
         }
 
         function showManual() {
+            confirmBox.style.display = 'block';
+            document.getElementById('ask-name').innerText = "Pilih namamu di bawah:";
             const sel = document.getElementById('studentSelect');
             sel.innerHTML = '<option value="">-- Pilih Nama --</option>';
-            // Tampilkan semua murid agar bisa dipilih jika AI salah tebak
+            
+            // Tambahkan daftar murid
             rawStudents.forEach(s => {
                 let o = document.createElement('option'); o.value = s.nisn; o.text = s.nama; sel.appendChild(o);
             });
+            
+            // Tambahkan pilihan "TIDAK ADA" sesuai permintaan
+            let oNone = document.createElement('option'); oNone.value = "none"; oNone.text = "KATA TIDAK ADA";
+            sel.appendChild(oNone);
+            
             document.getElementById('manual-box').style.display = 'block';
         }
 
         function submitManual() {
             const sel = document.getElementById('studentSelect');
             const nisn = sel.value;
-            const nama = sel.options[sel.selectedIndex].text;
             if (!nisn) return;
 
-            // CEK LAGI: Jika yang dipilih manual sudah absen
-            if (studentStatus[nisn] === "Sudah Absen") {
-                info.innerHTML = `<span style='color:red'>${nama} Sudah Absen</span>`;
+            if (nisn === "none") {
+                bicara("tuh kan kata saya geh apa, saya gak kenal anda");
                 tutupModal();
             } else {
-                prosesAbsensi(nisn, nama);
-                tutupModal();
+                const nama = sel.options[sel.selectedIndex].text;
+                if (studentStatus[nisn] === "Sudah Absen") {
+                    bicara("Anda sudah absen, jangan banyak banyak");
+                    tutupModal();
+                } else {
+                    prosesAbsensi(nisn, nama);
+                    tutupModal();
+                }
             }
         }
 
@@ -233,7 +266,6 @@
         }
 
         function prosesAbsensi(nisn, nama) {
-            // Suara berhasil singkat
             bicara("Absen berhasil, selamat belajar");
             info.innerHTML = `<span style="color:green">✅ BERHASIL: ${nama}</span>`;
             studentStatus[nisn] = "Sudah Absen";
