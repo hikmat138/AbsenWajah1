@@ -119,7 +119,7 @@
                     return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
                 } catch (e) { return null; }
             }));
-            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.55);
+            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.40);
             loader.innerText = "SIAP! DEKATI KAMERA";
             startRecognition();
         }
@@ -233,7 +233,7 @@
             });
             
             // Tambahkan pilihan "TIDAK ADA" sesuai permintaan
-            let oNone = document.createElement('option'); oNone.value = "none"; oNone.text = "KATA TIDAK ADA";
+            let oNone = document.createElement('option'); oNone.value = "none"; oNone.text = "TIDAK ADA NAMA SAYA";
             sel.appendChild(oNone);
             
             document.getElementById('manual-box').style.display = 'block';
