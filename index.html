@@ -11,7 +11,7 @@
         .main-card { background: white; padding: 40px 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .main-card h1 { font-size: 22px; color: #2c3e50; margin-bottom: 25px; border-bottom: 3px solid #27ae60; padding-bottom: 10px; }
         .btn-group { display: flex; flex-direction: column; gap: 12px; }
-        .btn-main { padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; border: none; }
+        .btn-main { padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; border: none; transition: 0.3s; }
         .btn-scan-wajah { background: #27ae60; color: white; }
         .btn-admin-login { background: #2c3e50; color: white; }
         
@@ -21,6 +21,18 @@
         #container { position: relative; width: 100%; border: 4px solid #333; border-radius: 15px; overflow: hidden; background: #000; }
         video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
         canvas { position: absolute; top: 0; left: 0; transform: scaleX(-1); }
+
+        /* Modal Konfirmasi */
+        #confirm-box { 
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            width: 85%; max-width: 350px; z-index: 100;
+        }
+        .btn-confirm { background: #27ae60; color: white; margin-bottom: 10px; width: 100%; }
+        .btn-wrong { background: #f39c12; color: white; width: 100%; }
+        
+        #manual-box { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+        #studentSelect { padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 10px; border: 1px solid #ccc; }
 
         #status-box { margin-top: 15px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; }
     </style>
@@ -49,18 +61,32 @@
         </div>
     </div>
 
+    <div id="confirm-box">
+        <h3 id="ask-name">Apakah kamu ...?</h3>
+        <button class="btn-main btn-confirm" id="btn-ya">YA, BENAR</button>
+        <button class="btn-main btn-wrong" onclick="showManual()">BUKAN SAYA</button>
+        
+        <div id="manual-box">
+            <p style="font-size: 13px; color: #7f8c8d;">Pilih nama murid di bawah ini:</p>
+            <select id="studentSelect"></select>
+            <button class="btn-main btn-confirm" onclick="submitManual()">KONFIRMASI ABSEN</button>
+        </div>
+    </div>
+
     <script>
         const video = document.getElementById('video');
         const loader = document.getElementById('loader');
         const info = document.getElementById('info');
+        const confirmBox = document.getElementById('confirm-box');
         const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec"; 
 
-        let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false;
+        let studentNames = {}, studentStatus = {}, faceMatcher, isProcessing = false, rawStudents = [];
 
         function bicara(teks) {
             window.speechSynthesis.cancel(); 
             const pesan = new SpeechSynthesisUtterance(teks);
             pesan.lang = "id-ID";
+            pesan.rate = 1.0; 
             window.speechSynthesis.speak(pesan);
         }
 
@@ -77,7 +103,6 @@
                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
             ]);
-
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             video.srcObject = stream;
             video.onloadedmetadata = () => { loadStudentData(); };
@@ -85,24 +110,28 @@
 
         async function loadStudentData() {
             loader.innerText = "Sinkronisasi Database...";
-            const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
-            const students = await response.json();
+            try {
+                const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
+                rawStudents = await response.json();
 
-            const descriptors = await Promise.all(students.map(async s => {
-                studentNames[s.nisn] = s.nama;
-                studentStatus[s.nisn] = s.statusHariIni;
-                if (!s.foto) return null;
-                try {
-                    const img = await faceapi.fetchImage(s.foto);
-                    const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                    return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
-                } catch (e) { return null; }
-            }));
+                const descriptors = await Promise.all(rawStudents.map(async s => {
+                    studentNames[s.nisn] = s.nama;
+                    studentStatus[s.nisn] = s.statusHariIni;
+                    if (!s.foto) return null;
+                    try {
+                        const img = await faceapi.fetchImage(s.foto);
+                        const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                        return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
+                    } catch (e) { return null; }
+                }));
 
-            // Sangat Ketat (0.35) agar tidak salah deteksi benda/hantu
-            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.35);
-            loader.innerText = "SILAKAN ARAHKAN WAJAH";
-            startRecognition();
+                faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.40);
+                loader.innerText = "SILAKAN DEKATI KAMERA";
+                startRecognition();
+            } catch (e) {
+                loader.innerText = "Koneksi Bermasalah!";
+                bicara("Maaf, koneksi internet bermasalah.");
+            }
         }
 
         function startRecognition() {
@@ -112,72 +141,86 @@
             faceapi.matchDimensions(canvas, size);
 
             setInterval(async () => {
-                // Gunakan deteksi dengan Landmark agar lebih akurat membedakan wajah asli vs benda
-                const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+                if (isProcessing) return;
+
+                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                if (det) {
-                    // FILTER 1: Skor deteksi harus di atas 0.85 (Bukan benda mati)
-                    // FILTER 2: Lebar wajah minimal 100px agar tidak deteksi yang jauh/tidak jelas
-                    if (det.detection.score < 0.85 || det.detection.box.width < 100) return;
+                // CEK KERUMUNAN (Maksimal 1 wajah saja)
+                if (detections.length > 1) {
+                    info.innerHTML = "<span style='color:red'>⚠️ SATU PER SATU!</span>";
+                    bicara("Tolong antre, silakan satu per satu.");
+                    return;
+                }
+
+                if (detections.length === 1) {
+                    const det = detections[0];
+                    if (det.detection.score < 0.85) return; // Abaikan jika tidak yakin wajah manusia
 
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
                     const dist = match.distance;
 
-                    if (nisn !== 'unknown' && dist < 0.40) {
+                    if (nisn !== 'unknown' && dist < 0.45) {
                         const nama = studentNames[nisn]; 
                         const status = studentStatus[nisn];
-                        const box = res.detection.box;
-                        const warna = status === "Sudah Absen" ? 'red' : '#2ecc71';
-                        const label = status === "Sudah Absen" ? nama + " (SUDAH)" : nama;
-
-                        ctx.strokeStyle = warna;
+                        
+                        ctx.strokeStyle = "#2ecc71";
                         ctx.lineWidth = 4;
-                        ctx.strokeRect(box.x, box.y, box.width, box.height);
-
-                        ctx.save();
-                        ctx.scale(-1, 1);
-                        ctx.font = "bold 20px Segoe UI";
-                        ctx.fillStyle = warna;
-                        ctx.fillText(label, -box.x - box.width, box.y - 12);
-                        ctx.restore();
+                        ctx.strokeRect(res.detection.box.x, res.detection.box.y, res.detection.box.width, res.detection.box.height);
 
                         if (status === "Sudah Absen") {
-                            if (!isProcessing) {
-                                isProcessing = true;
-                                bicara("Sudah absen hari ini, tolong gantian.");
-                                setTimeout(() => { isProcessing = false; }, 3500);
-                            }
+                            info.innerHTML = `<span style='color:red'>${nama} SUDAH ABSEN</span>`;
                         } else {
-                            if (!isProcessing) prosesAbsensi(nisn, nama);
+                            askConfirmation(nisn, nama);
                         }
-                    } else if (dist < 0.5) { 
-                        // Jika ragu-ragu (antara 0.35 - 0.5), jangan sebut nama
-                        ctx.strokeStyle = "orange";
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(res.detection.box.x, res.detection.box.y, res.detection.box.width, res.detection.box.height);
-                        
-                        ctx.save();
-                        ctx.scale(-1, 1);
-                        ctx.fillStyle = "orange";
-                        ctx.font = "bold 18px Segoe UI";
-                        ctx.fillText("KURANG JELAS", -res.detection.box.x - res.detection.box.width, res.detection.box.y - 10);
-                        ctx.restore();
                     }
                 }
-            }, 400);
+            }, 600);
+        }
+
+        function askConfirmation(nisn, nama) {
+            isProcessing = true;
+            document.getElementById('ask-name').innerText = `Apakah benar kamu ${nama}?`;
+            confirmBox.style.display = 'block';
+            bicara(`Apakah benar kamu ${nama}? Klik tombol hijau jika benar.`);
+            
+            document.getElementById('btn-ya').onclick = () => {
+                prosesAbsensi(nisn, nama);
+                closeModal();
+            };
+        }
+
+        function showManual() {
+            const sel = document.getElementById('studentSelect');
+            sel.innerHTML = '<option value="">-- Pilih Nama Murid --</option>';
+            rawStudents.filter(s => s.statusHariIni === "Belum").forEach(s => {
+                let o = document.createElement('option'); o.value = s.nisn; o.text = s.nama; sel.appendChild(o);
+            });
+            document.getElementById('manual-box').style.display = 'block';
+            bicara("Silakan pilih namamu dari daftar.");
+        }
+
+        function submitManual() {
+            const sel = document.getElementById('studentSelect');
+            if (!sel.value) return alert("Pilih nama murid!");
+            prosesAbsensi(sel.value, sel.options[sel.selectedIndex].text);
+            closeModal();
+        }
+
+        function closeModal() {
+            confirmBox.style.display = 'none';
+            document.getElementById('manual-box').style.display = 'none';
+            setTimeout(() => { isProcessing = false; info.innerText = ""; }, 2500);
         }
 
         function prosesAbsensi(nisn, nama) {
-            isProcessing = true;
-            bicara("Absen berhasil, selamat datang.");
+            bicara("Absen berhasil. Selamat belajar, " + nama);
             info.innerHTML = `<span style="color:green">✅ ABSEN BERHASIL: ${nama}</span>`;
             studentStatus[nisn] = "Sudah Absen";
             fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: nisn }) });
-            setTimeout(() => { isProcessing = false; info.innerText = ""; }, 3000);
         }
     </script>
 </body>
