@@ -56,7 +56,7 @@
     </div>
 
     <div id="confirm-box">
-        <h3 id="ask-name">Apakah ini kamu?</h3>
+        <h3 id="ask-name">Apakah benar ini namamu?</h3>
         <button class="btn-main btn-confirm" id="btn-ya">YA, BENAR</button>
         <button class="btn-main btn-wrong" onclick="showManual()">BUKAN SAYA</button>
         <div id="manual-box" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
@@ -79,11 +79,14 @@
                 window.speechSynthesis.cancel();
                 const pesan = new SpeechSynthesisUtterance(teks);
                 pesan.lang = "id-ID";
+                pesan.rate = 1.0;
                 window.speechSynthesis.speak(pesan);
             }
         }
 
         function showScan() {
+            // Pancingan suara agar browser mengizinkan audio
+            bicara("Siap menyalin data");
             document.getElementById('home-section').style.display = 'none';
             document.getElementById('scan-section').style.display = 'block';
             init();
@@ -119,8 +122,9 @@
                 } catch (e) { return null; }
             }));
 
-            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.45);
-            loader.innerText = "SIAP! SILAKAN SCAN";
+            // AMBANG BATAS (Threshold) diperlonggar ke 0.55 agar tidak terlalu ketat
+            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.55);
+            loader.innerText = "SIAP! DEKATI KAMERA";
             startRecognition();
         }
 
@@ -137,11 +141,11 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // HANYA TERIMA WAJAH YANG JELAS (SKOR > 0.9)
-                const validDetections = detections.filter(d => d.detection.score > 0.9);
+                // Ambil semua wajah yang terdeteksi cukup jelas
+                const validDetections = detections.filter(d => d.detection.score > 0.8);
 
                 if (validDetections.length > 0) {
-                    // AMBIL WAJAH TERBESAR (YANG PALING DEPAN)
+                    // Fokus ke wajah paling besar di depan
                     const det = validDetections.sort((a, b) => b.detection.box.width - a.detection.box.width)[0];
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
@@ -149,13 +153,13 @@
                     const dist = match.distance;
                     const box = res.detection.box;
 
-                    // Tentukan Warna & Nama
-                    let warna = "#e74c3c"; // Merah
-                    let teksNama = "Tidak Dikenal";
+                    let warna = "#e74c3c"; // Default Merah
+                    let teksMuncul = "Wajah Tidak Dikenal";
 
                     if (nisn !== 'unknown') {
-                        teksNama = studentNames[nisn];
-                        warna = dist < 0.45 ? "#2ecc71" : "#f1c40f"; // Hijau/Kuning
+                        // Frame Hijau jika jarak < 0.55 (Cukup Longgar)
+                        warna = dist < 0.55 ? "#2ecc71" : "#f1c40f";
+                        teksMuncul = studentNames[nisn];
                     }
 
                     // GAMBAR KOTAK
@@ -163,23 +167,22 @@
                     ctx.lineWidth = 4;
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-                    // GAMBAR TULISAN NAMA DI ATAS KOTAK
+                    // TULIS NAMA DI ATAS KOTAK
                     ctx.save();
-                    ctx.scale(-1, 1); // Mirror balik teks
+                    ctx.scale(-1, 1);
                     ctx.fillStyle = warna;
                     ctx.font = "bold 20px sans-serif";
-                    // Rumus posisi teks agar pas di atas frame
-                    ctx.fillText(teksNama, -box.x - box.width, box.y - 15);
+                    ctx.fillText(teksMuncul, -box.x - box.width, box.y - 15);
                     ctx.restore();
 
-                    // JIKA HIJAU (SANGAT COCOK)
+                    // PROSES JIKA DIKENAL (HIJAU)
                     if (warna === "#2ecc71") {
                         if (studentStatus[nisn] === "Sudah Absen") {
-                            info.innerHTML = `<span style='color:red'>${teksNama} Sudah Absen</span>`;
+                            info.innerHTML = `<span style='color:red'>${teksMuncul} Sudah Absen</span>`;
                         } else {
                             isProcessing = true;
-                            video.pause(); // Kamera berhenti
-                            askConfirmation(nisn, teksNama);
+                            video.pause();
+                            askConfirmation(nisn, teksMuncul);
                         }
                     }
                 }
@@ -188,8 +191,9 @@
 
         function askConfirmation(nisn, nama) {
             confirmBox.style.display = 'block';
-            document.getElementById('ask-name').innerText = `Apakah benar kamu ${nama}?`;
-            bicara(`Apakah benar kamu ${nama}?`);
+            document.getElementById('ask-name').innerText = `Apakah benar ini namamu, ${nama}?`;
+            // GANTI SUARA SESUAI PERMINTAAN
+            bicara(`Apakah benar ini namamu, ${nama}?`);
             
             document.getElementById('btn-ya').onclick = () => {
                 prosesAbsensi(nisn, nama);
