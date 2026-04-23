@@ -7,24 +7,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        
         .menu-container { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
         .main-card { background: white; padding: 40px 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .main-card h1 { font-size: 22px; color: #2c3e50; margin-bottom: 25px; border-bottom: 3px solid #27ae60; padding-bottom: 10px; }
         .btn-group { display: flex; flex-direction: column; gap: 12px; }
-        .btn-main { padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; border: none; }
-        .btn-scan-wajah { background: #27ae60; color: white; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); }
+        .btn-main { padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; border: none; }
+        .btn-scan-wajah { background: #27ae60; color: white; }
         .btn-admin-login { background: #2c3e50; color: white; }
-        .school-footer { margin-top: 25px; font-size: 13px; color: #7f8c8d; font-style: italic; }
-
-        #scan-section { display: none; width: 100%; max-width: 500px; padding: 15px; box-sizing: border-box; }
-        .btn-back { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; font-size: 16px; }
         
-        #container { position: relative; width: 100%; border: 4px solid #333; border-radius: 15px; overflow: hidden; background: #000; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        video { width: 100%; height: auto; display: block; transform: scaleX(-1); -webkit-transform: scaleX(-1); }
-        canvas { position: absolute; top: 0; left: 0; transform: scaleX(-1); -webkit-transform: scaleX(-1); }
+        #scan-section { display: none; width: 100%; max-width: 500px; padding: 15px; box-sizing: border-box; }
+        .btn-back { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; }
+        
+        #container { position: relative; width: 100%; border: 4px solid #333; border-radius: 15px; overflow: hidden; background: #000; }
+        video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
+        canvas { position: absolute; top: 0; left: 0; transform: scaleX(-1); }
 
-        #status-box { margin-top: 15px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+        #status-box { margin-top: 15px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; }
     </style>
 </head>
 <body>
@@ -36,7 +34,7 @@
                 <button class="btn-main btn-scan-wajah" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
                 <button class="btn-main btn-admin-login" onclick="window.location.href='admin.html'">🔐 LOGIN ADMINISTRATOR</button>
             </div>
-            <div class="school-footer">SD Negeri Ranca Tales<br>"Mindful, Joyful, and Meaningful"</div>
+            <div style="margin-top:20px; font-size:12px; color:#7f8c8d;">SD Negeri Ranca Tales</div>
         </div>
     </div>
 
@@ -63,7 +61,6 @@
             window.speechSynthesis.cancel(); 
             const pesan = new SpeechSynthesisUtterance(teks);
             pesan.lang = "id-ID";
-            pesan.rate = 1.0;
             window.speechSynthesis.speak(pesan);
         }
 
@@ -75,9 +72,11 @@
 
         async function init() {
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            ]);
 
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             video.srcObject = stream;
@@ -100,9 +99,9 @@
                 } catch (e) { return null; }
             }));
 
-            // THRESHOLD DIPERKETAT KE 0.38 (Mencegah Salah Orang)
-            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.38);
-            loader.innerText = "SISTEM SIAP! SILAKAN ABSEN";
+            // Sangat Ketat (0.35) agar tidak salah deteksi benda/hantu
+            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.35);
+            loader.innerText = "SILAKAN ARAHKAN WAJAH";
             startRecognition();
         }
 
@@ -113,20 +112,22 @@
             faceapi.matchDimensions(canvas, size);
 
             setInterval(async () => {
+                // Gunakan deteksi dengan Landmark agar lebih akurat membedakan wajah asli vs benda
                 const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (det) {
-                    // Validasi Kualitas Deteksi (Score min 0.8 agar tidak burem)
-                    if (det.score < 0.8) return;
+                    // FILTER 1: Skor deteksi harus di atas 0.85 (Bukan benda mati)
+                    // FILTER 2: Lebar wajah minimal 100px agar tidak deteksi yang jauh/tidak jelas
+                    if (det.detection.score < 0.85 || det.detection.box.width < 100) return;
 
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
-                    const distance = match.distance;
+                    const dist = match.distance;
 
-                    if (nisn !== 'unknown' && distance < 0.38) {
+                    if (nisn !== 'unknown' && dist < 0.40) {
                         const nama = studentNames[nisn]; 
                         const status = studentStatus[nisn];
                         const box = res.detection.box;
@@ -134,14 +135,14 @@
                         const label = status === "Sudah Absen" ? nama + " (SUDAH)" : nama;
 
                         ctx.strokeStyle = warna;
-                        ctx.lineWidth = 3;
+                        ctx.lineWidth = 4;
                         ctx.strokeRect(box.x, box.y, box.width, box.height);
 
                         ctx.save();
                         ctx.scale(-1, 1);
-                        ctx.font = "bold 18px Segoe UI";
+                        ctx.font = "bold 20px Segoe UI";
                         ctx.fillStyle = warna;
-                        ctx.fillText(label, -box.x - box.width, box.y - 10);
+                        ctx.fillText(label, -box.x - box.width, box.y - 12);
                         ctx.restore();
 
                         if (status === "Sudah Absen") {
@@ -153,8 +154,8 @@
                         } else {
                             if (!isProcessing) prosesAbsensi(nisn, nama);
                         }
-                    } else {
-                        // Jika ragu-ragu (distance > 0.38)
+                    } else if (dist < 0.5) { 
+                        // Jika ragu-ragu (antara 0.35 - 0.5), jangan sebut nama
                         ctx.strokeStyle = "orange";
                         ctx.lineWidth = 3;
                         ctx.strokeRect(res.detection.box.x, res.detection.box.y, res.detection.box.width, res.detection.box.height);
@@ -163,14 +164,8 @@
                         ctx.scale(-1, 1);
                         ctx.fillStyle = "orange";
                         ctx.font = "bold 18px Segoe UI";
-                        ctx.fillText("WAJAH KURANG JELAS", -res.detection.box.x - res.detection.box.width, res.detection.box.y - 10);
+                        ctx.fillText("KURANG JELAS", -res.detection.box.x - res.detection.box.width, res.detection.box.y - 10);
                         ctx.restore();
-
-                        if (!isProcessing) {
-                            isProcessing = true;
-                            bicara("Wajah tidak dikenali, anda siapa ya?");
-                            setTimeout(() => { isProcessing = false; }, 4000);
-                        }
                     }
                 }
             }, 400);
