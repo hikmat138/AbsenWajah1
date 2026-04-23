@@ -13,12 +13,11 @@
         .btn-group { display: flex; flex-direction: column; gap: 12px; }
         .btn-main { padding: 18px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; border: none; transition: 0.3s; }
         .btn-scan-wajah { background: #27ae60; color: white; }
-        .btn-admin-login { background: #2c3e50; color: white; }
         
         #scan-section { display: none; width: 100%; max-width: 500px; padding: 15px; box-sizing: border-box; }
         .btn-back { background: #e74c3c; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; }
         
-        #container { position: relative; width: 100%; border: 4px solid #333; border-radius: 15px; overflow: hidden; background: #000; }
+        #container { position: relative; width: 100%; border: 4px solid #333; border-radius: 15px; overflow: hidden; background: #000; display: flex; justify-content: center; }
         video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
         canvas { position: absolute; top: 0; left: 0; transform: scaleX(-1); z-index: 5; }
 
@@ -27,12 +26,9 @@
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             width: 85%; max-width: 350px; z-index: 100;
         }
+        #status-box { margin-top: 15px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; }
         .btn-confirm { background: #27ae60; color: white; margin-bottom: 10px; width: 100%; }
         .btn-wrong { background: #f39c12; color: white; width: 100%; }
-        
-        #manual-box { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
-        #studentSelect { padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 10px; border: 1px solid #ccc; }
-        #status-box { margin-top: 15px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; }
     </style>
 </head>
 <body>
@@ -42,31 +38,30 @@
             <h1>SISTEM ABSENSI<br><span style="color:#27ae60;">KELAS 3A</span></h1>
             <div class="btn-group">
                 <button class="btn-main btn-scan-wajah" onclick="showScan()">📸 MULAI SCAN WAJAH</button>
-                <button class="btn-main btn-admin-login" onclick="window.location.href='admin.html'">🔐 LOGIN ADMINISTRATOR</button>
+                <button class="btn-main" style="background:#2c3e50; color:white;" onclick="window.location.href='admin.html'">🔐 ADMIN</button>
             </div>
             <div style="margin-top:20px; font-size:12px; color:#7f8c8d;">SD Negeri Ranca Tales</div>
         </div>
     </div>
 
     <div id="scan-section">
-        <button class="btn-back" onclick="location.reload()">⬅ KEMBALI KE MENU</button>
+        <button class="btn-back" onclick="location.reload()">⬅ KEMBALI</button>
         <div id="container">
             <video id="video" autoplay muted playsinline></video>
         </div>
         <div id="status-box">
-            <div id="loader" style="color: #2980b9; font-weight: bold;">Inisialisasi AI...</div>
+            <div id="loader" style="color: #2980b9; font-weight: bold;">Memulai AI...</div>
             <div id="info" style="font-weight:bold; font-size:1.1em; margin-top:5px;"></div>
         </div>
     </div>
 
     <div id="confirm-box">
-        <h3 id="ask-name">Apakah benar kamu ...?</h3>
-        <button class="btn-main btn-confirm" id="btn-ya">YA, SAYA MAU ABSEN</button>
+        <h3 id="ask-name">Apakah ini kamu?</h3>
+        <button class="btn-main btn-confirm" id="btn-ya">YA, BENAR</button>
         <button class="btn-main btn-wrong" onclick="showManual()">BUKAN SAYA</button>
-        <div id="manual-box">
-            <p style="font-size: 13px; color: #7f8c8d;">Pilih namamu di bawah ini:</p>
-            <select id="studentSelect"></select>
-            <button class="btn-main btn-confirm" onclick="submitManual()">KONFIRMASI ABSEN</button>
+        <div id="manual-box" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+            <select id="studentSelect" style="width:100%; padding:10px; margin-bottom:10px;"></select>
+            <button class="btn-main btn-confirm" onclick="submitManual()">KONFIRMASI</button>
         </div>
     </div>
 
@@ -95,48 +90,38 @@
         }
 
         async function init() {
-            loader.innerText = "Memuat Model AI...";
+            loader.innerText = "Memuat Model...";
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-            try {
-                await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                ]);
-                
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => { loadStudentData(); };
-            } catch (err) {
-                loader.innerText = "Gagal memuat kamera/AI!";
-            }
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            ]);
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => { loadStudentData(); };
         }
 
         async function loadStudentData() {
-            loader.innerText = "Sinkronisasi Database Murid...";
-            try {
-                const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
-                rawStudents = await response.json();
+            loader.innerText = "Sinkronisasi Data...";
+            const response = await fetch(URL_GAS + "?t=" + new Date().getTime());
+            rawStudents = await response.json();
 
-                const descriptors = await Promise.all(rawStudents.map(async s => {
-                    studentNames[s.nisn] = s.nama;
-                    studentStatus[s.nisn] = s.statusHariIni;
-                    if (!s.foto) return null;
-                    try {
-                        const img = await faceapi.fetchImage(s.foto);
-                        const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                        return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
-                    } catch (e) { return null; }
-                }));
+            const descriptors = await Promise.all(rawStudents.map(async s => {
+                studentNames[s.nisn] = s.nama;
+                studentStatus[s.nisn] = s.statusHariIni;
+                if (!s.foto) return null;
+                try {
+                    const img = await faceapi.fetchImage(s.foto);
+                    const desc = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                    return desc ? new faceapi.LabeledFaceDescriptors(s.nisn.toString(), [desc.descriptor]) : null;
+                } catch (e) { return null; }
+            }));
 
-                const validDescriptors = descriptors.filter(d => d !== null);
-                faceMatcher = new faceapi.FaceMatcher(validDescriptors, 0.45);
-                loader.innerText = "SIAP! SILAKAN SCAN";
-                startRecognition();
-            } catch (e) {
-                loader.innerText = "Internet Bermasalah!";
-                bicara("Maaf Pak, koneksi internet terganggu.");
-            }
+            faceMatcher = new faceapi.FaceMatcher(descriptors.filter(d => d !== null), 0.45);
+            loader.innerText = "SIAP! SILAKAN SCAN";
+            startRecognition();
         }
 
         function startRecognition() {
@@ -152,49 +137,49 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                if (detections.length > 1) {
-                    info.innerHTML = "<span style='color:red'>SATU ORANG SAJA</span>";
-                    return;
-                }
+                // HANYA TERIMA WAJAH YANG JELAS (SKOR > 0.9)
+                const validDetections = detections.filter(d => d.detection.score > 0.9);
 
-                if (detections.length === 1) {
-                    const det = detections[0];
+                if (validDetections.length > 0) {
+                    // AMBIL WAJAH TERBESAR (YANG PALING DEPAN)
+                    const det = validDetections.sort((a, b) => b.detection.box.width - a.detection.box.width)[0];
                     const res = faceapi.resizeResults(det, size);
                     const match = faceMatcher.findBestMatch(det.descriptor);
                     const nisn = match.label;
                     const dist = match.distance;
                     const box = res.detection.box;
 
-                    // TENTUKAN WARNA FRAME
-                    let warna = "#e74c3c"; // Default: Merah (Tidak kenal)
+                    // Tentukan Warna & Nama
+                    let warna = "#e74c3c"; // Merah
+                    let teksNama = "Tidak Dikenal";
+
                     if (nisn !== 'unknown') {
-                        warna = dist < 0.45 ? "#2ecc71" : "#f1c40f"; // Hijau jika cocok, Kuning jika ragu
+                        teksNama = studentNames[nisn];
+                        warna = dist < 0.45 ? "#2ecc71" : "#f1c40f"; // Hijau/Kuning
                     }
 
                     // GAMBAR KOTAK
                     ctx.strokeStyle = warna;
                     ctx.lineWidth = 4;
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
-                    
-                    // TULIS NAMA (Hanya jika Hijau/Kuning)
-                    if (nisn !== 'unknown') {
-                        const nama = studentNames[nisn];
-                        ctx.save();
-                        ctx.scale(-1, 1);
-                        ctx.fillStyle = warna;
-                        ctx.font = "bold 18px Arial";
-                        ctx.fillText(nama, -box.x - box.width, box.y - 10);
-                        ctx.restore();
 
-                        // JIKA HIJAU (SANGAT COCOK) -> PROSES
-                        if (dist < 0.45) {
-                            if (studentStatus[nisn] === "Sudah Absen") {
-                                info.innerHTML = `<span style='color:red'>${nama} SUDAH ABSEN</span>`;
-                            } else {
-                                isProcessing = true;
-                                video.pause(); // FREEZE KAMERA
-                                askConfirmation(nisn, nama);
-                            }
+                    // GAMBAR TULISAN NAMA DI ATAS KOTAK
+                    ctx.save();
+                    ctx.scale(-1, 1); // Mirror balik teks
+                    ctx.fillStyle = warna;
+                    ctx.font = "bold 20px sans-serif";
+                    // Rumus posisi teks agar pas di atas frame
+                    ctx.fillText(teksNama, -box.x - box.width, box.y - 15);
+                    ctx.restore();
+
+                    // JIKA HIJAU (SANGAT COCOK)
+                    if (warna === "#2ecc71") {
+                        if (studentStatus[nisn] === "Sudah Absen") {
+                            info.innerHTML = `<span style='color:red'>${teksNama} Sudah Absen</span>`;
+                        } else {
+                            isProcessing = true;
+                            video.pause(); // Kamera berhenti
+                            askConfirmation(nisn, teksNama);
                         }
                     }
                 }
@@ -203,7 +188,7 @@
 
         function askConfirmation(nisn, nama) {
             confirmBox.style.display = 'block';
-            document.getElementById('ask-name').innerText = `Apakah kamu benar ${nama}?`;
+            document.getElementById('ask-name').innerText = `Apakah benar kamu ${nama}?`;
             bicara(`Apakah benar kamu ${nama}?`);
             
             document.getElementById('btn-ya').onclick = () => {
@@ -231,12 +216,7 @@
         function tutupModal() {
             confirmBox.style.display = 'none';
             document.getElementById('manual-box').style.display = 'none';
-            // Delay 3 detik agar murid sempat bergantian
-            setTimeout(() => { 
-                video.play();
-                isProcessing = false;
-                info.innerText = "";
-            }, 3000);
+            setTimeout(() => { video.play(); isProcessing = false; info.innerText = ""; }, 3000);
         }
 
         function prosesAbsensi(nisn, nama) {
