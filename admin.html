@@ -3,41 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin SDNRT</title>
+    <title>Admin SD Negeri Ranca Tales</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
-        select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
-        button { background: #2980b9; color: white; border: none; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; box-sizing: border-box; }
+        h3 { color: #2c3e50; margin-bottom: 20px; border-left: 5px solid #2980b9; padding-left: 10px; }
+        label { display: block; text-align: left; font-size: 14px; font-weight: bold; color: #7f8c8d; margin-top: 10px; }
+        select, button { width: 100%; padding: 14px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; font-size: 15px; }
+        select { background-color: #f9f9f9; cursor: pointer; }
+        button { background: #2980b9; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #21618c; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-back { background: #e74c3c; margin-top: 5px; }
+        .btn-back:hover { background: #c0392b; }
+        #loader { font-size: 14px; color: #2980b9; font-weight: bold; display: block; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+
     <div class="card">
         <h3>Input Izin / Sakit</h3>
-        <select id="studentSelect"><option>Memuat data...</option></select>
-        <select id="statusSelect"><option value="S">Sakit (S)</option><option value="I">Izin (I)</option></select>
+        
+        <div id="loader">Menghubungkan ke database...</div>
+
+        <label for="studentSelect">Nama Murid (Belum Absen):</label>
+        <select id="studentSelect">
+            <option value="">-- Memuat data... --</option>
+        </select>
+
+        <label for="statusSelect">Keterangan:</label>
+        <select id="statusSelect">
+            <option value="S">Sakit (S)</option>
+            <option value="I">Izin (I)</option>
+            <option value="A">Alpa (A)</option>
+        </select>
+
         <button id="btn" onclick="submit()">SIMPAN DATA</button>
-        <button style="background:#e74c3c" onclick="window.location.href='index.html'">KEMBALI</button>
+        <button class="btn-back" onclick="window.location.href='index.html'">⬅ KEMBALI</button>
+        
+        <div style="margin-top: 15px; font-size: 11px; color: #95a5a6;">
+            *Hanya murid yang belum absen/scan hari ini yang muncul di daftar.
+        </div>
     </div>
+
     <script>
         const URL_GAS = "https://script.google.com/macros/s/AKfycbwTDUsSarnUUVADzQTqleRr82x9z9xyTQxV3fap1E621CzCoCU3F0sCPUEhDwd-RnLr/exec";
+        const loader = document.getElementById('loader');
+        const btn = document.getElementById('btn');
+
+        // Fungsi memuat data murid yang belum absen
         async function load() {
-            const r = await fetch(URL_GAS + "?t=" + new Date().getTime());
-            const s = await r.json();
-            const sel = document.getElementById('studentSelect');
-            sel.innerHTML = '<option value="">-- Pilih Murid --</option>';
-            s.filter(x => x.statusHariIni === "Belum").forEach(x => {
-                let o = document.createElement('option'); o.value = x.nisn; o.text = x.nama; sel.appendChild(o);
-            });
+            try {
+                const r = await fetch(URL_GAS + "?t=" + new Date().getTime());
+                const s = await r.json();
+                const sel = document.getElementById('studentSelect');
+                
+                // Filter murid yang status harian di Google Sheet masih "Belum"
+                const muridBelumAbsen = s.filter(x => x.statusHariIni === "Belum");
+                
+                sel.innerHTML = '<option value="">-- Pilih Murid --</option>';
+                
+                if (muridBelumAbsen.length === 0) {
+                    sel.innerHTML = '<option value="">Semua murid sudah absen</option>';
+                    btn.disabled = true;
+                    loader.innerText = "Selesai: Semua murid sudah diproses.";
+                } else {
+                    muridBelumAbsen.forEach(x => {
+                        let o = document.createElement('option'); 
+                        o.value = x.nisn; 
+                        o.text = x.nama; 
+                        sel.appendChild(o);
+                    });
+                    loader.style.display = "none";
+                }
+            } catch (e) {
+                loader.innerText = "Gagal memuat data. Periksa internet!";
+                loader.style.color = "red";
+            }
         }
+
+        // Fungsi kirim data ke Google Apps Script
         async function submit() {
             const n = document.getElementById('studentSelect').value;
             const st = document.getElementById('statusSelect').value;
-            if(!n) return alert("Pilih murid!");
-            document.getElementById('btn').disabled = true;
-            await fetch(URL_GAS, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nisn: n, status: st }) });
-            alert("Berhasil!"); location.reload();
+            
+            if(!n) {
+                alert("Silakan pilih murid terlebih dahulu!");
+                return;
+            }
+
+            if(!confirm("Simpan status harian murid ini?")) return;
+
+            btn.disabled = true;
+            btn.innerText = "SEDANG MENYIMPAN...";
+            loader.style.display = "block";
+            loader.innerText = "Mengirim data ke server...";
+
+            try {
+                // Kirim NISN dan Status (S/I/A)
+                await fetch(URL_GAS, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify({ nisn: n, status: st }) 
+                });
+
+                alert("Data berhasil disimpan!");
+                location.reload(); // Reload agar daftar murid terupdate
+            } catch (e) {
+                alert("Terjadi kesalahan saat menyimpan!");
+                btn.disabled = false;
+                btn.innerText = "SIMPAN DATA";
+            }
         }
+
+        // Jalankan fungsi load saat halaman dibuka
         load();
     </script>
 </body>
